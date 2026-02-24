@@ -1,0 +1,18 @@
+{
+  "transactions": [
+    {
+      "id": 1771968194785,
+      "name": "Amex",
+      "category": "Food & Drink",
+      "date": "2026-02-24T21:23:14.785Z",
+      "amount": -510
+    },
+    {
+      "id": 1771968173027,
+      "name": "pay ",
+      "category": "Food & Drink",
+      "date": "2026-02-24T21:22:53.027Z",
+      "amount": 1998
+    }
+  ]
+}
