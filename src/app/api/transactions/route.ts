@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-const dataFilePath = path.join(process.cwd(), 'data.json');
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET() {
     try {
-        const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-        const data = JSON.parse(fileContent);
-        return NextResponse.json(data.transactions);
+        const { data, error } = await supabase
+            .from('transactions')
+            .select('*')
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        return NextResponse.json(data || []);
     } catch (error) {
-        console.error('Error reading data file:', error);
+        console.error('Error reading data from Supabase:', error);
         return NextResponse.json({ error: 'Failed to read data' }, { status: 500 });
     }
 }
@@ -19,28 +26,25 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        // Read existing data
-        const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-        const data = JSON.parse(fileContent);
-
         // Create new transaction
         const newTransaction = {
-            id: Date.now(),
             name: body.name,
             category: body.category,
             date: new Date().toISOString(),
             amount: Number(body.amount)
         };
 
-        // Add to top of list
-        data.transactions.unshift(newTransaction);
+        const { data, error } = await supabase
+            .from('transactions')
+            .insert([newTransaction])
+            .select();
 
-        // Write back to file
-        await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
+        if (error) throw error;
 
-        return NextResponse.json(newTransaction, { status: 201 });
+        // Return the successfully inserted transaction
+        return NextResponse.json(data[0], { status: 201 });
     } catch (error) {
-        console.error('Error writing data file:', error);
+        console.error('Error writing data to Supabase:', error);
         return NextResponse.json({ error: 'Failed to write data' }, { status: 500 });
     }
 }
@@ -50,21 +54,16 @@ export async function DELETE(request: Request) {
         const body = await request.json();
         const idToDelete = body.id;
 
-        const fileContent = await fs.readFile(dataFilePath, 'utf-8');
-        const data = JSON.parse(fileContent);
+        const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', idToDelete);
 
-        // Filter out the transaction
-        const initialLength = data.transactions.length;
-        data.transactions = data.transactions.filter((tx: any) => tx.id !== idToDelete);
+        if (error) throw error;
 
-        if (data.transactions.length === initialLength) {
-            return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-        }
-
-        await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2));
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
-        console.error('Error deleting data from file:', error);
+        console.error('Error deleting data from Supabase:', error);
         return NextResponse.json({ error: 'Failed to delete data' }, { status: 500 });
     }
 }
