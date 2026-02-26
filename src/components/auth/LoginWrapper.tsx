@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lock } from "lucide-react";
+import { Lock, LogOut } from "lucide-react";
 
 export default function LoginWrapper({ children }: { children: React.ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -19,7 +19,15 @@ export default function LoginWrapper({ children }: { children: React.ReactNode }
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === process.env.NEXT_PUBLIC_APP_PASSWORD) {
+
+        const expectedPassword = process.env.NEXT_PUBLIC_APP_PASSWORD;
+
+        if (!password || !expectedPassword) {
+            setError("Incorrect password");
+            return;
+        }
+
+        if (password === expectedPassword) {
             setIsAuthenticated(true);
             localStorage.setItem("dashboard_authenticated", "true");
             setError("");
@@ -28,10 +36,27 @@ export default function LoginWrapper({ children }: { children: React.ReactNode }
         }
     };
 
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        setPassword("");
+        localStorage.removeItem("dashboard_authenticated");
+    };
+
     if (!isMounted) return null; // Avoid hydration errors
 
     if (isAuthenticated) {
-        return <>{children}</>;
+        return (
+            <div className="relative">
+                <button
+                    onClick={handleLogout}
+                    className="absolute top-8 right-8 z-50 flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-gray-400 hover:text-rose-400 hover:border-rose-500/50 hover:bg-rose-500/10 transition-all text-sm font-medium"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                </button>
+                {children}
+            </div>
+        );
     }
 
     return (
